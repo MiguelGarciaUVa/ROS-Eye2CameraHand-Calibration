@@ -10,17 +10,44 @@ This ROS package is designed to position an external camera within the robot's w
 ✅ **Pose Data Saving**: Saves pose data for further analysis.
 
 ## Installation
-
-Make sure you have ROS 2 (e.g., Humble) installed and set up properly. Follow the steps below to install the package:
-
+### ROS 1
+Make sure you have ROS 1 (e.g., Noetic) installed and set up properly. Follow the steps below to install the package:
 1. Clone the repository into your ROS workspace:
    ```bash
    cd ~/ros2_ws/src
    git clone https://github.com/your-username/your-repository.git
    ```
-2. Install necessary dependencies:
- 
- 
+2. Install Dependencies:
+
+3. Create a ROS Workspace:
+
+4. Source the Workspace:
+
+5. Run the Node:
+
+### ROS 2
+Make sure you have ROS 2 (e.g., Humble) installed and set up properly. Follow the steps below to install the package:
+1. Clone the repository into your ROS workspace:
+   ```bash
+   cd ~/ros2_ws/src
+   git clone https://github.com/your-username/your-repository.git
+   ```
+2. Install Dependencies:
+
+3. Create a ROS Workspace:
+
+4. Source the Workspace:
+
+5. Run the Node: 
+
+## Usage
+1. Lanzar cámara externa en el entorno de ROS
+
+2. Lanzar TF del robot con la cámara
+
+3. Lanzar cámara del robot
+
+4. Lanzar programa
  
 
 
