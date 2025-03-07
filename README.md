@@ -41,13 +41,19 @@ Make sure you have ROS 2 (e.g., Humble) installed and set up properly. Follow th
 5. Run the Node: 
 
 ## Usage
-1. Lanzar cámara externa en el entorno de ROS
+Setup
+1. Launch External Camera: Make sure the external camera is correctly connected and configured within your ROS environment. If using Intel RealSense, launch the appropriate ROS node for the camera.
 
-2. Lanzar TF del robot con la cámara
+2. Launch Robot's TF Node: Ensure that the robot's transformation data is being published. This should include the robot’s URDF and its relevant TF frames.
 
-3. Lanzar cámara del robot
+3. Launch Robot Camera: Start the robot's camera (hand camera) and ensure it is streaming data for Aruco marker detection.
 
-4. Lanzar programa
+4. Place Aruco Markers: Position the Aruco marker on the environment where both cameras can see it.
+
+5. Launch the Calibration Program: Finally, launch the calibration node to detect Aruco markers and compute the transformation between the external camera and the robot’s hand camera:
  
-
+## Troubleshooting
+- **Camera not detected**: Ensure that the camera drivers are properly installed and the camera is connected correctly.
+- **Markers not detected**: Make sure the Aruco markers are clearly visible and correctly positioned. Adjust camera settings (e.g., focus, exposure) if necessary.
+- **TF transform issues**: Verify that the robot’s TF tree is correctly set up and broadcasting the necessary frames.
 
