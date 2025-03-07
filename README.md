@@ -17,7 +17,8 @@ Make sure you have ROS 2 (e.g., Humble) installed and set up properly. Follow th
    ```bash
    cd ~/ros2_ws/src
    git clone https://github.com/your-username/your-repository.git
-
+   ```
+2. Install necessary dependencies:
  
  
  
