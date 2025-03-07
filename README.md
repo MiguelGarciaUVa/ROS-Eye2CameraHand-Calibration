@@ -3,11 +3,11 @@ This ROS package is designed to position an external camera within the robot's w
 
 ## Features
 
-✅ **Camera Positioning**: Automatic camera positioning using Aruco markers.
-✅ **Camera Compatibility**: Works with Intel RealSense or other RGB cameras.
-✅ **Aruco Marker Detection**: Eliminates the need for manual measurements by utilizing the robot’s URDF.
-✅ **TF Broadcasting**: Publishes the estimated transformation as a TF transform, enabling integration with other parts of the robot system.
-✅ **Pose Data Saving**: Saves pose data for further analysis.
+-✅ **Camera Positioning**: Automatic camera positioning using Aruco markers.
+-✅ **Camera Compatibility**: Works with Intel RealSense or other RGB cameras.
+-✅ **Aruco Marker Detection**: Eliminates the need for manual measurements by utilizing the robot’s URDF.
+-✅ **TF Broadcasting**: Publishes the estimated transformation as a TF transform, enabling integration with other parts of the robot system.
+-✅ **Pose Data Saving**: Saves pose data for further analysis.
 
 ## Installation
 ### ROS 1
