@@ -229,7 +229,7 @@ class poseEstimation:
         rospy.loginfo(f"Camera 2 pose saved to camera2_pose.npy")
         
         # Broadcast the transform
-        self.tf_broadcaster.sendTransform(trans_world_camera2, q_converted, rospy.Time.now(), 'camera_2_depth_optical_frame', 'base_link')
+        self.tf_broadcaster.sendTransform(trans_world_camera2, q_converted, rospy.Time.now(), 'camera_2_color_frame', 'base_link')
         
 if __name__ == '__main__':
     try:
