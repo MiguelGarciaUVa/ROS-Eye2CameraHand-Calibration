@@ -1,45 +1,59 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
-import rospy
-import tf
-from tf.transformations import *
+'''
+This script subscribes to the color and depth camera topics, processing images in real-time. 
+It uses OpenCV to detect ArUco markers in the images and estimates the camera's pose relative to a base reference frame. 
+The program also handles the conversion of ROS images to OpenCV format, performs 3D transformation calculations, and publishes the estimated poses as TF transformations.
+
+@author: Miguel García Gómez
+'''
+
+import math
+import os
+import time
+
 import cv2
 import cv2.aruco as aruco
-from cv_bridge import CvBridge
 import numpy as np
-import tf2_ros
+import rospy
+import tf
+import transforms3d.quaternions as t3d_quat
+from cv_bridge import CvBridge
 from sensor_msgs.msg import CameraInfo, Image
-import tf.transformations
-import math
-import geometry_msgs
+from tf.transformations import *
 
-class poseEstimation:
+class PoseEstimation:
     def __init__(self):
         # Initialize the ROS node
         rospy.init_node('camera_pose_estimation', anonymous=True)
         self.camera_info1 = None
         self.camera_info2 = None
-        
+        self.image1 = None
+        self.image2 = None
+
         # Subscribe to camera info topic
         rospy.Subscriber('/camera/color/camera_info', CameraInfo, self.camera_info1_callback)
         rospy.Subscriber('/camera_2/color/camera_info', CameraInfo, self.camera_info2_callback)
-        
+        rospy.Subscriber('/camera/color/image_raw', Image, self.image1_callback)
+        rospy.Subscriber('/camera_2/color/image_raw', Image, self.image2_callback)
+
         # Inicializar la clase CvBridge
         self.bridge = CvBridge()
         
         # Setup tf listener and broadcaster
-        self.tf_buffer = tf2_ros.Buffer()
-        self.listener = tf2_ros.TransformListener(self.tf_buffer)
-        self.br = tf2_ros.TransformBroadcaster()
+        self.tf_broadcaster = tf.TransformBroadcaster()
+        self.tf_listener = tf.TransformListener()
 
         # Marker length in meters
         self.marker_length = 0.1  
 
-        # Wait until the camera info is received
-        while not rospy.is_shutdown() and (self.camera_info1 is None and self.camera_info2 is None):
-            rospy.sleep(0.1)
+        self.output_dir = "capturas_aruco"
+        if not os.path.exists(self.output_dir):
+            os.makedirs(self.output_dir)
         
+        rospy.Timer(rospy.Duration(1.0), self.CalculateTransform)
+        rospy.loginfo("PoseEstimation node initialized.")
 
 #########################################################################################################################################
 # Función que recibe y guarda la información de la cámara (parámetros intrínsecos...) publicada en el topic '/camera/color/camera_info'
@@ -58,19 +72,21 @@ class poseEstimation:
 ####################################################            
 # Función para capturar imágenes
 ####################################################
-    def capture_images(self):
+    def image1_callback(self, msg):
+        self.image1 = msg
+
+    def image2_callback(self, msg):
+        self.image2 = msg
+
+    def save_images(self, img1, img2):
+            timestamp = int(time.time())
+            path1 = os.path.join(self.output_dir, f"image1_{timestamp}.png")
+            path2 = os.path.join(self.output_dir, f"image2_{timestamp}.png")
+            cv2.imwrite(path1, img1)
+            cv2.imwrite(path2, img2)
+            rospy.loginfo(f"Images saved: {path1}, {path2}")
+
     
-        # Captura imagen de la cámara 1
-        image_cam1 = rospy.wait_for_message('/camera/color/image_raw', Image, timeout=None)
-        rospy.loginfo("Imagen de la cámara 1 capturada.")
-        image_cam1 = self.bridge.imgmsg_to_cv2(image_cam1, "bgr8")
-    
-        # Captura imagen de la cámara 2
-        image_cam2 = rospy.wait_for_message('/camera_2/color/image_raw', Image, timeout=None)
-        rospy.loginfo("Imagen de la cámara 2 capturada.")
-        image_cam2 = self.bridge.imgmsg_to_cv2(image_cam2, "bgr8")
-        
-        return image_cam1, image_cam2
 
 ####################################################            
 # Función para estimar la pose del aruco (estimatePoseSingleMarkers ya no existe en la libreria)
@@ -89,15 +105,13 @@ class poseEstimation:
                                   [marker_size / 2, marker_size / 2, 0],
                                   [marker_size / 2, -marker_size / 2, 0],
                                   [-marker_size / 2, -marker_size / 2, 0]], dtype=np.float32)
-        trash = []
         rvecs = []
         tvecs = []
         for c in corners:
-            nada, R, t = cv2.solvePnP(marker_points, c, mtx, distortion, False, cv2.SOLVEPNP_IPPE_SQUARE)
+            _, R, t = cv2.solvePnP(marker_points, c, mtx, distortion, False, cv2.SOLVEPNP_IPPE_SQUARE)
             rvecs.append(R)
             tvecs.append(t)
-            trash.append(nada)
-        return rvecs, tvecs, trash
+        return rvecs, tvecs
 
 #############################################################################################################
 # Funcion que transforma el tf a matriz
@@ -136,90 +150,104 @@ class poseEstimation:
 ####################################################################################################
 # Función que calcula la posición de la cámara 2 con respecto a la cámara 1
 ####################################################################################################
-    def CalculateTransform(self):
-        # Load camera calibration parameters
-        # self.camera_matrix1 = self.camera_info1.K
-        # self.dist_coeffs1 = self.camera_info1.D
-        # self.camera_matrix2 = self.camera_info2.K
-        # self.dist_coeffs2 = self.camera_info2.D
+    def CalculateTransform(self, event):
+        if self.camera_info1 is None or self.camera_info2 is None or self.image1 is None or self.image2 is None:
+            rospy.loginfo("Waiting for camera info and images...")
+            return
+
+        try:
+            cv_image1 = self.bridge.imgmsg_to_cv2(self.image1, "bgr8")
+            cv_image2 = self.bridge.imgmsg_to_cv2(self.image2, "bgr8")
+            self.save_images(cv_image1, cv_image2)
+        except Exception as e:
+            rospy.logerr("Error converting image: " + str(e))
+            return
         
-        self.camera_matrix1 = np.array(self.camera_info1.K).reshape(3, 3)
-        self.dist_coeffs1 = np.array(self.camera_info1.D)
-        self.camera_matrix2 = np.array(self.camera_info2.K).reshape(3, 3)
-        self.dist_coeffs2 = np.array(self.camera_info2.D)
-        
-        print(self.camera_matrix1)
-        print(self.camera_matrix2)
-        # Load images
-        image1, image2 = self.capture_images()
-        
+        camera_matrix1 = np.array(self.camera_info1.K).reshape(3, 3)
+        dist_coeffs1 = np.array(self.camera_info1.D)
+        camera_matrix2 = np.array(self.camera_info2.K).reshape(3, 3)
+        dist_coeffs2 = np.array(self.camera_info2.D)
         
         # Detect markers
         aruco_dict = aruco.getPredefinedDictionary(aruco.DICT_ARUCO_ORIGINAL)
-        parameters =  aruco.DetectorParameters()
+        try:
+            parameters = aruco.DetectorParameters_create()
+        except AttributeError:
+            parameters = aruco.DetectorParameters()
         detector = aruco.ArucoDetector(aruco_dict, parameters)
+
+        corners1, ids1, _ = detector.detectMarkers(cv_image1)
+        corners2, ids2, _ = detector.detectMarkers(cv_image2)
+
+        if not corners1 or not corners2:
+            rospy.loginfo("Markers not detected in both images.")
+            return
         
-        corners1, ids1, _ = detector.detectMarkers(image1)
-        corners2, ids2, _ = detector.detectMarkers(image2)
+        rvecs1, tvecs1 = self.estimatePoseSingleMarkers(corners1, self.marker_length, camera_matrix1, dist_coeffs1)
+        rvecs2, tvecs2 = self.estimatePoseSingleMarkers(corners2, self.marker_length, camera_matrix2, dist_coeffs2)
+
+        if not rvecs1 or not rvecs2:
+            rospy.logwarn("Pose estimation failed for one of the cameras.")
+            return
         
-        if len(corners1) > 0 and len(corners2) > 0:
-            # Estimate pose of the ArUco marker for both cameras
-            rvec1, tvec1, _ = self.estimatePoseSingleMarkers(corners1, self.marker_length, self.camera_matrix1, self.dist_coeffs1)
-            rvec2, tvec2, _ = self.estimatePoseSingleMarkers(corners2, self.marker_length, self.camera_matrix2, self.dist_coeffs2)
-            
-            # Known pose of the first camera in the world frame
-            try:
-                trans = self.tf_buffer.lookup_transform('base_link', 'camera_color_frame', rospy.Time())
-                print(trans)
-                T_world_camera1 = self.transform_to_matrix(trans.transform)
-            except (tf2_ros.LookupException, tf2_ros.ConnectivityException, tf2_ros.ExtrapolationException):
-                rospy.logwarn("No se pudo obtener la transformación de camera_color_frame a base_link.")
-                return None
-            
-            # Compute transformation from camera1 to marker
-            R_camera1_marker, _ = cv2.Rodrigues(rvec1[0])
-            T_camera1_marker = np.hstack((R_camera1_marker, tvec1[0].reshape(3, 1)))
-            T_camera1_marker = np.vstack((T_camera1_marker, [0, 0, 0, 1]))
-    
-            # Compute transformation from world to marker
-            T_world_marker = np.dot(T_world_camera1, T_camera1_marker)
-    
-            # Compute transformation from camera2 to marker
-            R_camera2_marker, _ = cv2.Rodrigues(rvec2[0])
-            T_camera2_marker = np.hstack((R_camera2_marker, tvec2[0].reshape(3, 1)))
-            T_camera2_marker = np.vstack((T_camera2_marker, [0, 0, 0, 1]))
-    
-            # Compute transformation from world to camera2
-            T_marker_camera2 = np.linalg.inv(T_camera2_marker)
-            T_world_camera2 = np.dot(T_world_marker, T_marker_camera2)
-    
-            # Extract translation and rotation
-            trans_world_camera2 = tf.transformations.translation_from_matrix(T_world_camera2)
-            rot_world_camera2 = tf.transformations.quaternion_from_matrix(T_world_camera2)
-            
-            # Use the transform directly
-            print("Translation: ", trans_world_camera2)
-            print("Rotation: ", self.quaternion_to_euler(rot_world_camera2))
-            
-            
-            # Broadcast the transform
-            t = geometry_msgs.msg.TransformStamped()
-            t.header.stamp = rospy.Time.now()
-            t.header.frame_id = 'base_link'
-            t.child_frame_id = 'camera_2_depth_optical_frame'
-            #t.child_frame_id = 'camera_2_link'
-            t.transform.translation.x = trans_world_camera2[0]
-            t.transform.translation.y = trans_world_camera2[1]
-            t.transform.translation.z = trans_world_camera2[2]
-            t.transform.rotation.x = rot_world_camera2[0]
-            t.transform.rotation.y = rot_world_camera2[1]
-            t.transform.rotation.z = rot_world_camera2[2]
-            t.transform.rotation.w = rot_world_camera2[3]
-            
-            while not rospy.is_shutdown():
-                self.br.sendTransform(t)
-                rospy.sleep(0.1)
-            
+        # Known pose of the first camera in the world frame
+        try:
+            trans, rot = self.tf_listener.lookupTransform('base_link', 'camera_color_frame', rospy.Time(0))
+        except (tf.LookupException, tf.ConnectivityException, tf.ExtrapolationException):
+            rospy.logwarn("Could not get transform for camera 1.")
+            return
+        
+        T_world_camera1 = tf.transformations.compose_matrix(translate=trans, angles=tf.transformations.euler_from_quaternion(rot))
+
+        # Compute transformation from camera1 to marker
+        R_camera1_marker, _ = cv2.Rodrigues(rvecs1[0])
+        T_camera1_marker = np.hstack((R_camera1_marker, tvecs1[0].reshape(3, 1)))
+        T_camera1_marker = np.vstack((T_camera1_marker, [0, 0, 0, 1]))
+
+        # Compute transformation from world to marker
+        T_world_marker = np.dot(T_world_camera1, T_camera1_marker)
+
+        # Compute transformation from camera2 to marker
+        R_camera2_marker, _ = cv2.Rodrigues(rvecs2[0])
+        T_camera2_marker = np.hstack((R_camera2_marker, tvecs2[0].reshape(3, 1)))
+        T_camera2_marker = np.vstack((T_camera2_marker, [0, 0, 0, 1]))
+
+        # Compute transformation from world to camera2
+        T_marker_camera2 = np.linalg.inv(T_camera2_marker)
+        T_world_camera2 = np.dot(T_world_marker, T_marker_camera2)
+
+        # Extract translation and rotation
+        trans_world_camera2 = T_world_camera2[:3, 3]
+        q = t3d_quat.mat2quat(T_world_camera2[:3, :3])
+        # transforms3d returns quaternion in [w, x, y, z]; convert to [x, y, z, w]
+        q_converted = [q[1], q[2], q[3], q[0]]
+
+        euler_angles = self.quaternion_to_euler(q_converted)
+
+        # Use the transform directly
+        print("Translation: ", trans_world_camera2)
+        print("Rotation: ", euler_angles)
+        
+        # Guardar la posición y orientación en un archivo .npy
+        pose_data = {
+            "position": trans_world_camera2,
+            "orientation_quaternion": q_converted,
+            "orientation_euler": euler_angles
+        }
+
+        np.save("camera2_pose.npy", pose_data)
+        rospy.loginfo(f"Camera 2 pose saved to camera2_pose.npy")
+        
+        # Broadcast the transform
+        self.tf_broadcaster.sendTransform(trans_world_camera2, q_converted, rospy.Time.now(), 'camera_2_depth_optical_frame', 'base_link')
+        
+        # Optionally, reset images so that we process only new frames next time
+        self.image1 = None
+        self.image2 = None
+        
 if __name__ == '__main__':
-    poseEstimation = poseEstimation()
-    poseEstimation.CalculateTransform()
+    try:
+        PoseEstimation()
+        rospy.spin()
+    except rospy.ROSInterruptException:
+        pass
