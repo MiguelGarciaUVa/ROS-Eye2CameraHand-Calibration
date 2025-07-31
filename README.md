@@ -19,11 +19,9 @@ Make sure you have ROS 1 (e.g., Noetic) installed and set up properly. Follow th
    ```
 2. Install Dependencies:
 
-3. Create a ROS Workspace:
+3. Source the Workspace:
 
-4. Source the Workspace:
-
-5. Run the Node:
+4. Run the Node:
 
 ### ROS 2
 Make sure you have ROS 2 (e.g., Humble) installed and set up properly. Follow the steps below to install the package:
@@ -34,11 +32,9 @@ Make sure you have ROS 2 (e.g., Humble) installed and set up properly. Follow th
    ```
 2. Install Dependencies:
 
-3. Create a ROS Workspace:
+3. Source the Workspace:
 
-4. Source the Workspace:
-
-5. Run the Node: 
+4. Run the Node: 
 
 ## Usage
 Setup
