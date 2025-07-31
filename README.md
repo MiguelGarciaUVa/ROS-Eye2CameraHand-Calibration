@@ -15,7 +15,7 @@ Make sure you have ROS 1 (e.g., Noetic) installed and set up properly. Follow th
 1. Clone the repository into your ROS workspace:
    ```bash
    cd ~/ros2_ws/src
-   git clone https://github.com/your-username/your-repository.git
+   git clone https://github.com/MiguelGarciaUVa/ROS-Eye2CameraHand-Calibration.git
    ```
 2. Install Dependencies:
 
@@ -30,7 +30,7 @@ Make sure you have ROS 2 (e.g., Humble) installed and set up properly. Follow th
 1. Clone the repository into your ROS workspace:
    ```bash
    cd ~/ros2_ws/src
-   git clone https://github.com/your-username/your-repository.git
+   git clone https://github.com/MiguelGarciaUVa/ROS-Eye2CameraHand-Calibration.git
    ```
 2. Install Dependencies:
 
