@@ -14,7 +14,7 @@ This ROS package is designed to position an external camera within the robot's w
 Make sure you have ROS 1 (e.g., Noetic) installed and set up properly. Follow the steps below to install the package:
 1. Clone the repository into your ROS workspace:
    ```bash
-   cd ~/ros2_ws/src
+   cd ~/ros1_ws/src
    git clone https://github.com/MiguelGarciaUVa/ROS-Eye2CameraHand-Calibration.git
    ```
 2. Install Dependencies:
