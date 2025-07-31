@@ -158,7 +158,7 @@ class PoseEstimation:
         try:
             cv_image1 = self.bridge.imgmsg_to_cv2(self.image1, "bgr8")
             cv_image2 = self.bridge.imgmsg_to_cv2(self.image2, "bgr8")
-            self.save_images(cv_image1, cv_image2)
+            #self.save_images(cv_image1, cv_image2)
         except Exception as e:
             rospy.logerr("Error converting image: " + str(e))
             return
